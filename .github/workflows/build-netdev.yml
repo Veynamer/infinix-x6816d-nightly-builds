@@ -1,0 +1,71 @@
+name: Build images netdev
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 5' # Run every friday at midnight
+
+env:
+  KERNEL_BRANCH: 6.12.1
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out build configurations
+        uses: actions/checkout@v4
+
+      - name: Substitute placeholders in configs
+        run: |
+          find . -type f -name "*.cfg" -exec sed -i "s|HOME|$(echo $HOME)|;s|NPROC|$(nproc)|" {} +
+
+      - name: Install pmbootstrap from git
+        run: |
+          git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
+          mkdir -p ~/.local/bin
+          ln -s "$PWD/pmbootstrap/pmbootstrap.py" ~/.local/bin/pmbootstrap
+          pmbootstrap --version
+
+      - name: Set up pmaports
+        run: |
+          echo -e '\n\n' | pmbootstrap init || true
+          cd ~/.local/var/pmbootstrap/cache_git/pmaports
+          git remote add ums512 https://github.com/Veynamer/pmaports.git
+          git fetch ums512 main
+          git reset --hard ums512/main
+
+      - name: Clone kernel sources
+        run: |
+          git clone https://github.com/Veynamer/linux.git --single-branch --branch ums512-netdev --depth 1 ./linux
+
+      - name: Choose any UMS512 device in pmbootstrap to build kernel
+        run: |
+          cp infinix-x6816d.cfg ~/.config/pmbootstrap_v3.cfg
+
+      - name: Compile kernel with envkernel
+        run: |
+          cd linux
+          shopt -s expand_aliases
+          source ../pmbootstrap/helpers/envkernel.sh
+          make defconfig ums512_defconfig
+          make -j$(nproc)
+          pmbootstrap build --envkernel linux-postmarketos-unisoc-ums512
+
+      - name: Create artifact directory
+        run: |
+          mkdir out
+
+      - name: Build infinix-x6816d
+        run: |
+          cp infinix-x6816d.cfg ~/.config/pmbootstrap_v3.cfg
+          pmbootstrap install --password 7002
+          pmbootstrap export
+          cp /tmp/postmarketOS-export/boot.img out/boot-infinix-x6816d.img
+          cp /tmp/postmarketOS-export/infinix-x6816d.img out/rootfs-infinix-x6816d.img
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: infinix-x6816d
+          path: out/*-x6816d.img*
+          retention-days: 7

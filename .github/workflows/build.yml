@@ -30,42 +30,42 @@ jobs:
         run: |
           echo -e '\n\n' | pmbootstrap init || true
           cd ~/.local/var/pmbootstrap/cache_git/pmaports
-          git remote add mainlining https://github.com/mainlining/pmaports.git
-          git fetch mainlining nikroks/alioth
-          git reset --hard mainlining/nikroks/alioth
+          git remote add ums512 https://github.com/Veynamer/pmaports.git
+          git fetch ums512 main
+          git reset --hard ums512/main
 
       - name: Clone kernel sources
         run: |
-          git clone https://github.com/mainlining/linux.git --single-branch --branch nikroks/alioth --depth 1 ./linux
+          git clone https://github.com/Veynamer/linux.git --single-branch --branch ums512 --depth 1 ./linux
 
-      - name: Choose any SM8250 device in pmbootstrap to build kernel
+      - name: Choose any UMS512 device in pmbootstrap to build kernel
         run: |
-          cp xiaomi-alioth.cfg ~/.config/pmbootstrap_v3.cfg
+          cp infinix-x6816d.cfg ~/.config/pmbootstrap_v3.cfg
 
       - name: Compile kernel with envkernel
         run: |
           cd linux
           shopt -s expand_aliases
           source ../pmbootstrap/helpers/envkernel.sh
-          make defconfig sm8250.config
+          make defconfig ums512_defconfig
           make -j$(nproc)
-          pmbootstrap build --envkernel linux-postmarketos-qcom-sm8250-alioth
+          pmbootstrap build --envkernel linux-postmarketos-unisoc-ums512
 
       - name: Create artifact directory
         run: |
           mkdir out
 
-      - name: Build xiaomi-alioth
+      - name: Build infinix-x6816d
         run: |
-          cp xiaomi-alioth.cfg ~/.config/pmbootstrap_v3.cfg
-          pmbootstrap install --password 147147
+          cp infinix-x6816d.cfg ~/.config/pmbootstrap_v3.cfg
+          pmbootstrap install --password 7002
           pmbootstrap export
-          cp /tmp/postmarketOS-export/boot.img out/boot-xiaomi-tianma-alioth.img
-          cp /tmp/postmarketOS-export/xiaomi-alioth.img out/rootfs-xiaomi-alioth.img
+          cp /tmp/postmarketOS-export/boot.img out/boot-infinix-x6816d.img
+          cp /tmp/postmarketOS-export/infinix-x6816d.img out/rootfs-infinix-x6816d.img
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: xiaomi-alioth
-          path: out/*-alioth.img*
+          name: infinix-x6816d
+          path: out/*-x6816d.img*
           retention-days: 7
